@@ -137,8 +137,8 @@
 		   			}
 		   			else
 		   			{
-						pool.recept();
-						pool.fire();
+						pool.receptAll();
+						// pool.recept();
 		   			}
 					break;
 				case "L" :	
@@ -265,6 +265,7 @@
 			var boatX = parseInt(this.boat.loc.substr(0,i)) ;
 			var boatY = parseInt(this.boat.loc.substr(i + 1)) ;  
 
+			console.log("blocks.length = " + blocks.length);
 			for(var j = 0,lg = blocks.length; j < lg; j ++ )
 			{
 				k = blocks[j].indexOf(",");				
@@ -275,13 +276,14 @@
 				X = X + addX;
 				Y = Y + addY;
 
+			console.log("X = " + X);
+			console.log("Y = " + Y);
 				if( pool.outBounds(X,Y) || matrix[X][Y] === 1)
 					return false;
 			}
 			return true;
 		},
 		stepEnable : function(addX,addY){
-
 			return pool.moveEnable(this.boat.getBlocks(),addX,addY);
 		},
 		rotateEnable : function(){
@@ -295,7 +297,92 @@
 			}
 			return pool.moveEnable(rotateBlocks,0,0);
 		},
+		blockMoveEnable : function(block,addX,addY)
+		{
+			var i = this.boat.loc.indexOf(",");
+
+			var boatX = parseInt(this.boat.loc.substr(0,i)) ;
+			var boatY = parseInt(this.boat.loc.substr(i + 1)) ;  
+			k = block.indexOf(",");				
+			blockX = parseInt(block.substr(0,k)) ;
+			blockY = parseInt(block.substr(k + 1)) ;
+			X = boatX + blockX;
+			Y = boatY + blockY;
+			X = X + addX;
+			Y = Y + addY;
+
+			if( pool.outBounds(X,Y) || matrix[X][Y] === 1)
+				return false;
+			return true;
+		},
+		//feelling not so good by this play method.
 		recept : function(){
+
+			eventsQueue = new CircleQueue(10);
+		    clearTimeout(t);
+			var i = this.boat.loc.indexOf(",");
+			var boatX = parseInt(this.boat.loc.substr(0,i)) ;
+			var boatY = parseInt(this.boat.loc.substr(i + 1)) ;  
+
+			var newBlocks = new Array();
+			var m = 0;
+			var blocks = this.boat.getBlocks();
+			for(var j = 0; j < blocks.length; j ++ )
+			{
+				console.log("blocks[j] = " + blocks[j]);
+				if( pool.blockMoveEnable(blocks[j],0,1))
+				{
+					newBlocks[m] = blocks[j];
+					m ++;
+				}
+				else	
+				{
+					var k = blocks[j].indexOf(",");				
+					var blockX = parseInt(blocks[j].substr(0,k)) ;
+					var blockY = parseInt(blocks[j].substr(k + 1)) ;
+					var X = boatX + blockX;
+					var Y = boatY + blockY;
+					matrix[X][Y] = 1;
+
+					console.log("X = " + X);
+					console.log("Y = " + Y);
+
+					var Xpx = X * consts.cellSize;
+					var Ypx = Y * consts.cellSize;
+
+					var $blocks = $(".boat").children();
+					for(var i = 0, lg = $blocks.length; i < lg; i ++ )
+					{
+
+						$block = $($blocks[i]);
+						t = $block.offset().top - consts.poolTop;
+						l = $block.offset().left - consts.poolLeft;
+						if( t === Ypx && l === Xpx)
+						{
+							$block.remove();
+							_block = $(document.createElement('div'))
+								.addClass('block');
+							_block[0].style.left = '' + l + 'px'; 
+							_block[0].style.top = '' + t + 'px';
+							this.$pool.append(_block);
+						}
+					}
+				}
+			}
+			if( $(".boat").children().length === 0 )
+			{
+				$(".boat").remove();			
+				pool.checkFull();
+				pool.fire();
+			}
+			else
+			{
+				this.boat.blocks = newBlocks;
+	    		t = setTimeout("$.fn.kennyBlocks.timedDown()",timeOut);
+			}
+		
+		},
+		receptAll : function(){
 
 			eventsQueue = new CircleQueue(10);
 		    clearTimeout(t);
@@ -327,6 +414,7 @@
 			}				
 			$(".boat").remove();			
 			pool.checkFull();
+			pool.fire();
 		},
 		checkFull : function(){
 
