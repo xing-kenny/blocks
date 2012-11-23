@@ -34,6 +34,7 @@
 	var timeOut = 500;
 	var boatSize = 3;
 
+	var PAUSE = false;
 
 	var eventsQueue = new CircleQueue(10);
 
@@ -41,10 +42,11 @@
 
 		consts = o; 
 		consts.$gameStart.attr({"value": "ING..."});
-		consts.$pool.attr({"height" : "300px"});
+		// consts.$pool.attr({"height" : "300px"});
 		fireY = 0;
 		fireX = Math.round(consts.colNum/2) - 2;		
 		consts.$score.attr({"value": 0});
+		PAUSE = false;		
 
 		boatCells = new Array(boatSize * boatSize);
 		for(var i = 0; i < boatSize; i ++)
@@ -105,8 +107,10 @@
 		rotateReClock[2][1] = "1,0";	
 		rotateReClock[2][2] = "2,0";	
 
+		document.onkeyup = $.fn.kennyBlocks.onKeyUp;
 		pool = new Pool(consts.$pool);
 		pool.fire();
+
 
 	}
 	var init = $.fn.kennyBlocks.init;
@@ -120,7 +124,7 @@
 		colNum     = consts.colNum;
 		rowNum     = consts.rowNum;
 
-		if(! eventsQueue.isEmpty())
+		if(! eventsQueue.isEmpty() && !PAUSE )
 		{
 			switch(eventsQueue.delQueue()){
 				case "D" :
@@ -173,7 +177,8 @@
 	// ---------------------------------------------
 	var t;
 	$.fn.kennyBlocks.timedDown = function(){
-		eventsQueue.enterQueue("D");    		
+		if(!PAUSE)
+			eventsQueue.enterQueue("D");    		
 	    t = setTimeout("$.fn.kennyBlocks.timedDown()",timeOut);
 	}
 	var timedDown = $.fn.kennyBlocks.timedDown;
@@ -195,6 +200,17 @@
 	    if(keycode == 40) {
 			eventsQueue.enterQueue("D");    		
 	    }
+	    if(keycode == 32) {
+	    	PAUSE = !PAUSE;
+	    	if(PAUSE)
+	    	{
+	    		$(".pause").attr({"style":"display:true"});
+	    	}
+	    	else
+	    	{
+	    		$(".pause").attr({"style":"display:none"});
+	    	}
+	    }
 	}	
 
 	// ---------------------------------------------
@@ -207,6 +223,7 @@
 	$.fn.kennyBlocks.Pool.prototype = {
 
 		init : function(){
+    		$(".gameover").attr({"style":"display:none"});
 			this.$pool.empty();
 		},
 		fire : function(){
@@ -220,6 +237,7 @@
 			{
 			    clearTimeout(t);
 				console.log("GAME OVER");
+	    		$(".gameover").attr({"style":"display:true"});
 				consts.$gameStart.attr({"value": "restart!"});
 
 			}
