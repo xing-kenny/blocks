@@ -29,8 +29,6 @@
 	var boatCells;
 	var rotateClock;
 	var rotateReClock;
-	var fireY;
-	var fireX;
 	var timeOut = 500;
 	var boatSize = 3;
 
@@ -43,8 +41,6 @@
 		consts = o; 
 		consts.$gameStart.attr({"value": "ING..."});
 		// consts.$pool.attr({"height" : "300px"});
-		fireY = 0;
-		fireX = Math.round(consts.colNum/2) - 2;		
 		consts.$score.attr({"value": 0});
 		PAUSE = false;		
 
@@ -58,9 +54,9 @@
 		}
 
 		matrix = new Array();
-		for(var i = 0; i < consts.colNum; i++ ){
+		for(var i = 0; i < consts.colNum; i ++ ){
 			matrix[i] = new Array();//必需，否则下面arr[i][j]报错
-		  	for(var j = 0; j < consts.rowNum; j++ )
+		  	for(var j = 0; j < consts.rowNum; j ++ )
 		  	{
 		    	matrix[i][j] = 0;
 			}
@@ -107,6 +103,10 @@
 		rotateReClock[2][1] = "1,0";	
 		rotateReClock[2][2] = "2,0";	
 
+	    clearTimeout(t);
+	    clearTimeout(h);
+		eventsQueue = new CircleQueue(10);
+
 		document.onkeyup = $.fn.kennyBlocks.onKeyUp;
 		pool = new Pool(consts.$pool);
 		pool.fire();
@@ -116,8 +116,10 @@
 	var init = $.fn.kennyBlocks.init;
 
 	//-------------------------------------------
+	var h;
 	$.fn.kennyBlocks.handleEvent = function(){
 
+		// console.log("handleEvent ----");
 		poolLeft   = consts.poolLeft;
 		poolTop    = consts.poolTop;
 		cellSize   = consts.cellSize;
@@ -130,13 +132,15 @@
 				case "D" :
 					if( pool.stepEnable(0,1))
 					{
-			    		var p = $(".boat").offset().top;
+			    		var p = $("#pool1 .boat").offset().top;
 			    		p = p - poolTop + cellSize;
-		   				$(".boat")[0].style.top = '' + p + 'px'; 
+		   				$("#pool1 .boat")[0].style.top = '' + p + 'px'; 
 		   				pool.boat.d();
 		   			}
 		   			else
 		   			{
+					    clearTimeout(t);
+					    clearTimeout(h);
 						pool.receptAll();
 						// pool.recept();
 		   			}
@@ -144,9 +148,9 @@
 				case "L" :	
 					if( pool.stepEnable(-1,0))
 					{
-			    		var p = $(".boat").offset().left;
+			    		var p = $("#pool1 .boat").offset().left;
 			    		p = p - poolLeft - cellSize;
-			   			$(".boat")[0].style.left = '' + p + 'px'; 
+			   			$("#pool1 .boat")[0].style.left = '' + p + 'px'; 
 		   				pool.boat.l();
 					}	    		
 					break;
@@ -155,14 +159,13 @@
 					{
 			    		var p = $(".boat").offset().left;
 			    		p = p - poolLeft + cellSize;
-			   			$(".boat")[0].style.left = '' + p + 'px'; 
+			   			$("#pool1 .boat")[0].style.left = '' + p + 'px'; 
 		   				pool.boat.r();
 					}	    		
 					break;
 				case "U" :
 					if(pool.rotateEnable())
 					{
-						console.log("Ratate !!!");
 						BlockFactory.rotateBlocks(pool.boat);
 					}
 					break;
@@ -170,7 +173,7 @@
 					break;
 			}
 		}
-	    setTimeout("$.fn.kennyBlocks.handleEvent()",timeOut);
+	    h = setTimeout("$.fn.kennyBlocks.handleEvent()",timeOut);
 	}
 	var handleEvent = $.fn.kennyBlocks.handleEvent;
 
@@ -223,19 +226,46 @@
 	$.fn.kennyBlocks.Pool.prototype = {
 
 		init : function(){
+
     		$(".gameover").attr({"style":"display:none"});
 			this.$pool.empty();
+			$(".nextA").empty();
+			this.fireY = 0;
+			this.fireX = Math.round(consts.colNum/2) - 2;	
+
+			this.nextBoat = null;
 		},
 		fire : function(){
 
+		    clearTimeout(t);
+		    clearTimeout(h);
 			if(pool.fireEnable()){
-				this.boat = new Boat(this.$pool);	
+				// this.boat = new Boat(this.$pool);	
+				// handleEvent();
+				// timedDown();
+
+				if( this.nextBoat === null )
+				{
+					this.boat = new Boat(this.$pool,this.fireY,this.fireX);	
+				}
+				else
+				{
+					this.boat = this.nextBoat;
+					this.$pool.append(this.boat.$boat);
+					this.boat.$boat[0].style.top = '' + this.fireY * consts.cellSize + 'px';
+					this.boat.$boat[0].style.left = '' + this.fireX * consts.cellSize + 'px'; 
+					this.boat.loc = '' + this.fireX + ',' + this.fireY;
+
+					// this.nextBoat.$boat.remove();
+				}
+				this.nextBoat = new Boat($("#nextOne"),0,0);
+
+				eventsQueue = new CircleQueue(10);
 				handleEvent();
 				timedDown();
 			}
 			else
 			{
-			    clearTimeout(t);
 				console.log("GAME OVER");
 	    		$(".gameover").attr({"style":"display:true"});
 				consts.$gameStart.attr({"value": "restart!"});
@@ -244,8 +274,8 @@
 		},
 		fireEnable : function(){
 
-			for(y = fireY; y < fireY + boatSize; y ++ )
-				for( x = fireX; x < fireX + boatSize; x ++)
+			for(y = this.fireY; y < this.fireY + boatSize; y ++ )
+				for( x = this.fireX; x < this.fireX + boatSize; x ++)
 				{
 					if( matrix[x][y] === 1 )
 						return false;	
@@ -265,7 +295,6 @@
 			var boatX = parseInt(this.boat.loc.substr(0,i)) ;
 			var boatY = parseInt(this.boat.loc.substr(i + 1)) ;  
 
-			console.log("blocks.length = " + blocks.length);
 			for(var j = 0,lg = blocks.length; j < lg; j ++ )
 			{
 				k = blocks[j].indexOf(",");				
@@ -276,8 +305,6 @@
 				X = X + addX;
 				Y = Y + addY;
 
-			console.log("X = " + X);
-			console.log("Y = " + Y);
 				if( pool.outBounds(X,Y) || matrix[X][Y] === 1)
 					return false;
 			}
@@ -318,8 +345,6 @@
 		//feelling not so good by this play method.
 		recept : function(){
 
-			eventsQueue = new CircleQueue(10);
-		    clearTimeout(t);
 			var i = this.boat.loc.indexOf(",");
 			var boatX = parseInt(this.boat.loc.substr(0,i)) ;
 			var boatY = parseInt(this.boat.loc.substr(i + 1)) ;  
@@ -329,7 +354,6 @@
 			var blocks = this.boat.getBlocks();
 			for(var j = 0; j < blocks.length; j ++ )
 			{
-				console.log("blocks[j] = " + blocks[j]);
 				if( pool.blockMoveEnable(blocks[j],0,1))
 				{
 					newBlocks[m] = blocks[j];
@@ -344,13 +368,12 @@
 					var Y = boatY + blockY;
 					matrix[X][Y] = 1;
 
-					console.log("X = " + X);
-					console.log("Y = " + Y);
-
 					var Xpx = X * consts.cellSize;
 					var Ypx = Y * consts.cellSize;
 
-					var $blocks = $(".boat").children();
+					// var $blocks = $(".boat").children();
+					var $blocks = $("#pool1 div").children();
+
 					for(var i = 0, lg = $blocks.length; i < lg; i ++ )
 					{
 
@@ -369,31 +392,31 @@
 					}
 				}
 			}
-			if( $(".boat").children().length === 0 )
+			if( $("#pool1 .boat").children().length === 0 )
 			{
-				$(".boat").remove();			
+				$("#pool1 .boat").remove();			
 				pool.checkFull();
 				pool.fire();
 			}
 			else
 			{
 				this.boat.blocks = newBlocks;
-	    		t = setTimeout("$.fn.kennyBlocks.timedDown()",timeOut);
+				timedDown();
 			}
 		
 		},
 		receptAll : function(){
 
-			eventsQueue = new CircleQueue(10);
-		    clearTimeout(t);
+		 //    clearTimeout(t);
+		 //    clearTimeout(h);
+			// eventsQueue = new CircleQueue(10);
 			var i = this.boat.loc.indexOf(",");
 			var boatX = parseInt(this.boat.loc.substr(0,i)) ;
 			var boatY = parseInt(this.boat.loc.substr(i + 1)) ;  
-			var $blocks = $(".boat").children();
 
+			var $blocks = $("#pool1 .boat").children();
 			for(var i = 0, lg = $blocks.length; i < lg; i ++ )
 			{
-
 				$block = $($blocks[i]);
 				t = $block.offset().top - consts.poolTop;
 				l = $block.offset().left - consts.poolLeft;
@@ -401,6 +424,7 @@
 				$block[0].style.top = '' + t + 'px';
 				$block[0].style.left = '' + l + 'px';
 			}
+			$("#pool1 .boat").remove();			
 
 			var blocks = this.boat.getBlocks();
 			for(var j = 0,lg = blocks.length; j < lg; j ++ )
@@ -412,7 +436,6 @@
 				var Y = boatY + blockY;
 				matrix[X][Y] = 1;
 			}				
-			$(".boat").remove();			
 			pool.checkFull();
 			pool.fire();
 		},
@@ -446,7 +469,7 @@
 				var r = rows[p];
 				var Y = consts.poolTop + r * consts.cellSize;
 
-				var $blocks = $(".block");
+				var $blocks = $("#pool1 .block");
 				for(var i = 0,lg = $blocks.length; i < lg; i ++ )
 				{
 					$block = $($blocks[i]);
@@ -464,7 +487,6 @@
 				{
 					for( var c = 0; c < consts.colNum; c ++ )
 					{
-						// console.log("down before ----" + "matrix[" + c + "][" + rr + "] = " + matrix[c][rr]);
 						matrix[c][rr] = matrix[c][rr - 1];
 					}
 				}
@@ -486,14 +508,14 @@
 	Pool.prototype = $.fn.kennyBlocks.Pool.prototype;
 
 	// ---------------------------------------------
-	$.fn.kennyBlocks.Boat = function($pool){
+	$.fn.kennyBlocks.Boat = function($pool,fireY,fireX){
 
 		this.$pool = $pool;
-		this.init();
+		this.init(fireY,fireX);
 	}
 	$.fn.kennyBlocks.Boat.prototype = {
 
-		init : function(){
+		init : function(fireY,fireX){
 
 			var $boat = $(document.createElement('div'))
 				.addClass('boat');
@@ -537,18 +559,18 @@
 		var createBlocks = function($boat){
 
 			var blocks = romandBlocks();
-			createBlock(blocks);
+			createBlock($boat,blocks);
 			return blocks;
 		};
 		var rotateBlocks = function(boat){
 
 			var blocks = rotate(boat);
 			boat.blocks = blocks;
-			$(".boat").empty();
-			createBlock(blocks);
+			boat.$boat.empty();
+			createBlock(boat.$boat,blocks);
 			return blocks;			
 		};
-		var createBlock = function(blocks){
+		var createBlock = function($boat,blocks){
 			for(var i = 0; i < blocks.length; i ++)
 			{
 				x = blocks[i].substr(0,1) * consts.cellSize;
@@ -557,7 +579,7 @@
 					.addClass('block');
 				_block[0].style.left = '' + x + 'px'; 
 				_block[0].style.top = '' + y + 'px';
-				$(".boat").append(_block);
+				$boat.append(_block);
 			}
 		};
 		var romandBlocks = function(){
